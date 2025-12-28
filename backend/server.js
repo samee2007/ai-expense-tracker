@@ -3,6 +3,8 @@ const cors = require('cors');
 require('dotenv').config();
 
 const expenseRoutes = require('./routes/expenseRoutes');
+const reportRoutes = require('./routes/reportRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,8 +16,10 @@ app.use(express.json());
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Routes
+// API Routes
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Static files and index.html are served by express.static above
 

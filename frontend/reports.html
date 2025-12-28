@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - AI Expense Tracker</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-light">
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-dark bg-primary mb-4">
+        <div class="container">
+            <a href="index.html" class="navbar-brand mb-0 h1">AI Expense Tracker - Reports</a>
+            <button id="logoutBtn" class="btn btn-outline-light btn-sm">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Tab Navigation -->
+        <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="daily-tab" data-bs-toggle="tab" data-bs-target="#daily"
+                    type="button">
+                    <i class="bi bi-calendar-day"></i> Daily
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="weekly-tab" data-bs-toggle="tab" data-bs-target="#weekly" type="button">
+                    <i class="bi bi-calendar-week"></i> Weekly
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button">
+                    <i class="bi bi-calendar-month"></i> Monthly
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="reportTabContent">
+
+            <!-- Daily Report -->
+            <div class="tab-pane fade show active" id="daily">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Select Date</label>
+                        <input type="date" class="form-control" id="dailyDatePicker">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="loadDailyReport()">
+                            <i class="bi bi-search"></i> Load Report
+                        </button>
+                    </div>
+                </div>
+                <div id="dailySummary"></div>
+                <div id="dailyExpenses"></div>
+            </div>
+
+            <!-- Weekly Report -->
+            <div class="tab-pane fade" id="weekly">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Week Starting</label>
+                        <input type="date" class="form-control" id="weeklyDatePicker">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="loadWeeklyReport()">
+                            <i class="bi bi-search"></i> Load Report
+                        </button>
+                    </div>
+                </div>
+                <div id="weeklySummary"></div>
+                <div id="weeklyExpenses"></div>
+            </div>
+
+            <!-- Monthly Report -->
+            <div class="tab-pane fade" id="monthly">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Month</label>
+                        <select class="form-select" id="monthSelect">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Year</label>
+                        <input type="number" class="form-control" id="yearInput" value="2025">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button class="btn btn-primary" onclick="loadMonthlyReport()">
+                            <i class="bi bi-search"></i> Load Report
+                        </button>
+                    </div>
+                </div>
+                <div id="monthlySummary"></div>
+                <div id="monthlyExpenses"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module" src="reports.js"></script>
+</body>
+
+</html>

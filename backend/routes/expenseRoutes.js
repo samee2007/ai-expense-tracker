@@ -8,6 +8,12 @@ router.post('/', expenseController.addExpense);
 // GET /api/expenses - List expenses
 router.get('/', expenseController.getExpenses);
 
+// PUT /api/expenses/:id - Update an expense
+router.put('/:id', expenseController.updateExpense);
+
+// DELETE /api/expenses/:id - Delete an expense
+router.delete('/:id', expenseController.deleteExpense);
+
 // GET /api/expenses/export/csv - Export to CSV
 router.get('/export/csv', expenseController.exportCSV);
 
