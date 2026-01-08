@@ -1,8 +1,8 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Use the latest stable Flash model (Gemini 2.5 Flash)
-const MODEL_NAME = "gemini-2.5-flash";
+// Use Gemini 1.5 Flash - more stable and reliable than 2.5-flash
+const MODEL_NAME = "gemini-1.5-flash";
 
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
@@ -73,11 +73,53 @@ exports.generateInsights = async (summaryData) => {
     Transactions: ${summaryData.expenseCount}
     `;
 
-    try {
-        const result = await textModel.generateContent(prompt);
-        return result.response.text();
-    } catch (error) {
-        console.error("Gemini Insights Error:", error);
-        return "Insight generation currently unavailable.";
+    // Retry logic with exponential backoff
+    const maxRetries = 2;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const result = await textModel.generateContent(prompt);
+            return result.response.text();
+        } catch (error) {
+            console.error(`Gemini Insights Error (attempt ${attempt + 1}/${maxRetries}):`, error.message);
+
+            // If it's a 503 or rate limit error and not the last attempt, wait and retry
+            if (attempt < maxRetries - 1 && (error.status === 503 || error.status === 429)) {
+                const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+            }
+        }
     }
+
+    // Fallback: Generate basic insights from the data
+    console.log("Generating fallback insights...");
+    return generateFallbackInsights(summaryData);
 };
+
+// Fallback insights generator when Gemini is unavailable
+function generateFallbackInsights(summaryData) {
+    const insights = [];
+    const { totalAmount, categoryTotals, expenseCount } = summaryData;
+
+    // Find highest spending category
+    const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+    if (sortedCategories.length > 0) {
+        const [topCategory, topAmount] = sortedCategories[0];
+        const percentage = ((topAmount / totalAmount) * 100).toFixed(0);
+        insights.push(`**High ${topCategory} Spending:** ${topCategory} represents ${percentage}% of total expenses. Consider reducing discretionary spending here.`);
+    }
+
+    // Average transaction value
+    const avgTransaction = (totalAmount / expenseCount).toFixed(2);
+    insights.push(`**Transaction Analysis:** ${expenseCount} transactions averaging ${avgTransaction} each. Track small purchases to identify saving opportunities.`);
+
+    // Budget recommendation
+    if (sortedCategories.length > 1) {
+        const [secondCategory] = sortedCategories[1];
+        insights.push(`**Budget Tips:** Focus on ${sortedCategories[0][0]} and ${secondCategory} categories. Set weekly limits to control spending effectively.`);
+    } else {
+        insights.push(`**Budget Tips:** Set weekly spending limits and track daily expenses to maintain better financial control.`);
+    }
+
+    return insights.join('\n\n');
+}

@@ -190,8 +190,31 @@ exports.exportPDF = async (req, res) => {
         const { uid } = req.query;
         if (!uid) return res.status(400).json({ error: 'UID is required' });
 
+        // Fetch expenses
         const snapshot = await db.collection('users').doc(uid).collection('expenses').orderBy('date', 'desc').get();
         const expenses = snapshot.docs.map(doc => doc.data());
+
+        // Fetch user currency settings
+        let currency = 'INR';
+        let currencySymbol = '₹';
+        const currencySymbols = {
+            'INR': '₹',
+            'USD': '$',
+            'EUR': '€',
+            'GBP': '£',
+            'JPY': '¥'
+        };
+
+        try {
+            const settingsDoc = await db.collection('users').doc(uid).collection('settings').doc('preferences').get();
+            if (settingsDoc.exists) {
+                const settings = settingsDoc.data();
+                currency = settings.currency || 'INR';
+                currencySymbol = currencySymbols[currency] || '₹';
+            }
+        } catch (err) {
+            console.warn('Failed to fetch currency settings, using default:', err);
+        }
 
         // Calculate Summary
         const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -209,41 +232,208 @@ exports.exportPDF = async (req, res) => {
             console.warn("Failed to generate insights:", err);
         }
 
-        // Generate PDF
-        const doc = new PDFDocument();
+        // Generate Professional PDF
+        const doc = new PDFDocument({
+            margin: 50,
+            size: 'A4'
+        });
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename="monthly_report.pdf"');
+        res.setHeader('Content-Disposition', 'attachment; filename="expense_report.pdf"');
 
         doc.pipe(res);
 
+        // Header with colored background
+        doc.rect(0, 0, doc.page.width, 120).fill('#6366F1');
+
         // Title
-        doc.fontSize(20).text('Monthly Expense Report', { align: 'center' });
-        doc.moveDown();
+        doc.fillColor('#FFFFFF')
+            .fontSize(28)
+            .font('Helvetica-Bold')
+            .text('Monthly Expense Report', 50, 40, { align: 'center' });
+
+        // Date
+        doc.fontSize(12)
+            .font('Helvetica')
+            .text(`Generated on: ${new Date().toLocaleDateString()}`, 50, 80, { align: 'center' });
+
+        doc.moveDown(3);
 
         // Summary Section
-        doc.fontSize(14).text(`Total Expenses: Rs. ${totalAmount}`, { bold: true });
+        doc.fillColor('#1F2937')
+            .fontSize(18)
+            .font('Helvetica-Bold')
+            .text('Summary', 50, 150);
+
+        doc.moveTo(50, 175)
+            .lineTo(doc.page.width - 50, 175)
+            .strokeColor('#6366F1')
+            .lineWidth(2)
+            .stroke();
+
         doc.moveDown(0.5);
 
-        doc.text('Category Breakdown:', { underline: true });
-        Object.entries(categoryTotals).forEach(([cat, amount]) => {
-            doc.fontSize(12).text(`- ${cat}: Rs. ${amount}`);
-        });
-        doc.moveDown();
+        // Total Expenses Box
+        const totalY = doc.y + 10;
+        doc.roundedRect(50, totalY, doc.page.width - 100, 60, 10)
+            .fillAndStroke('#F0F4FF', '#6366F1');
 
-        // Insights Section
-        doc.fontSize(14).text('AI Insights:', { underline: true });
-        doc.fontSize(12).text(insights, { align: 'justify' });
-        doc.moveDown();
+        doc.fillColor('#6366F1')
+            .fontSize(14)
+            .font('Helvetica')
+            .text('Total Expenses', 70, totalY + 15);
 
-        // Detailed List
-        doc.fontSize(14).text('Detailed Expenses:', { underline: true });
+        doc.fillColor('#1F2937')
+            .fontSize(24)
+            .font('Helvetica-Bold')
+            .text(`${currencySymbol}${totalAmount.toFixed(2)}`, 70, totalY + 32);
+
+        doc.moveDown(3);
+
+        // Category Breakdown
+        doc.fillColor('#1F2937')
+            .fontSize(16)
+            .font('Helvetica-Bold')
+            .text('Category Breakdown', 50);
+
         doc.moveDown(0.5);
 
-        expenses.forEach(e => {
-            doc.fontSize(10).text(`${new Date(e.date).toLocaleDateString()} - ${e.category} - Rs.${e.amount}`);
-            doc.fontSize(9).fillColor('grey').text(e.description);
-            doc.fillColor('black').moveDown(0.5);
+        const categoryColors = {
+            'Food': '#10B981',
+            'Travel': '#3B82F6',
+            'Bills': '#EF4444',
+            'Shopping': '#F59E0B',
+            'Others': '#8B5CF6'
+        };
+
+        Object.entries(categoryTotals).forEach(([cat, amount], index) => {
+            const y = doc.y;
+            const color = categoryColors[cat] || '#6B7280';
+
+            // Category color indicator
+            doc.roundedRect(50, y, 8, 20, 2).fill(color);
+
+            // Category name
+            doc.fillColor('#1F2937')
+                .fontSize(12)
+                .font('Helvetica')
+                .text(cat, 70, y + 2);
+
+            // Amount
+            doc.fontSize(12)
+                .font('Helvetica-Bold')
+                .text(`${currencySymbol}${amount.toFixed(2)}`, doc.page.width - 150, y + 2, { align: 'right' });
+
+            doc.moveDown(1);
         });
+
+        doc.moveDown();
+
+        // AI Insights Section
+        doc.fillColor('#1F2937')
+            .fontSize(18)
+            .font('Helvetica-Bold')
+            .text('AI Insights', 50);
+
+        doc.moveTo(50, doc.y + 5)
+            .lineTo(doc.page.width - 50, doc.y + 5)
+            .strokeColor('#6366F1')
+            .lineWidth(2)
+            .stroke();
+
+        doc.moveDown(0.5);
+
+        // Insights box
+        const insightsY = doc.y;
+        doc.roundedRect(50, insightsY, doc.page.width - 100, null)
+            .fillOpacity(0.05)
+            .fill('#6366F1')
+            .fillOpacity(1);
+
+        doc.fillColor('#374151')
+            .fontSize(11)
+            .font('Helvetica')
+            .text(insights, 65, insightsY + 15, {
+                width: doc.page.width - 130,
+                align: 'justify',
+                lineGap: 4
+            });
+
+        doc.moveDown(2);
+
+        // Check if we need a new page for the detailed list
+        if (doc.y > doc.page.height - 200) {
+            doc.addPage();
+        }
+
+        // Detailed Expenses
+        doc.fillColor('#1F2937')
+            .fontSize(18)
+            .font('Helvetica-Bold')
+            .text('Detailed Expenses', 50);
+
+        doc.moveTo(50, doc.y + 5)
+            .lineTo(doc.page.width - 50, doc.y + 5)
+            .strokeColor('#6366F1')
+            .lineWidth(2)
+            .stroke();
+
+        doc.moveDown(1);
+
+        // Table header
+        const tableTop = doc.y;
+        doc.fontSize(10)
+            .font('Helvetica-Bold')
+            .fillColor('#FFFFFF');
+
+        doc.rect(50, tableTop - 5, doc.page.width - 100, 25).fill('#6366F1');
+
+        doc.text('Date', 60, tableTop, { width: 80, continued: false });
+        doc.text('Category', 150, tableTop, { width: 100, continued: false });
+        doc.text('Description', 260, tableTop, { width: 150, continued: false });
+        doc.text('Amount', 420, tableTop, { width: 100, align: 'right', continued: false });
+
+        doc.moveDown(0.8);
+
+        // Table rows
+        expenses.forEach((e, index) => {
+            // Check if we need a new page
+            if (doc.y > doc.page.height - 100) {
+                doc.addPage();
+            }
+
+            const rowY = doc.y;
+            const rowHeight = 35;
+
+            // Alternating row background
+            if (index % 2 === 0) {
+                doc.rect(50, rowY - 5, doc.page.width - 100, rowHeight).fill('#F9FAFB');
+            }
+
+            doc.fillColor('#374151')
+                .fontSize(10)
+                .font('Helvetica')
+                .text(new Date(e.date).toLocaleDateString(), 60, rowY, { width: 80, continued: false });
+
+            const catColor = categoryColors[e.category] || '#6B7280';
+            doc.fillColor(catColor)
+                .font('Helvetica-Bold')
+                .text(e.category, 150, rowY, { width: 100, continued: false });
+
+            doc.fillColor('#6B7280')
+                .fontSize(9)
+                .font('Helvetica')
+                .text(e.description.substring(0, 40) + (e.description.length > 40 ? '...' : ''), 260, rowY, { width: 150, continued: false });
+
+            doc.fillColor('#1F2937')
+                .fontSize(10)
+                .font('Helvetica-Bold')
+                .text(`${currencySymbol}${e.amount.toFixed(2)}`, 420, rowY, { width: 100, align: 'right', continued: false });
+
+            doc.moveDown(1.2);
+        });
+
+        // Note: Footer disabled to prevent pagination issues
+        // PDFKit's bufferedPageRange() doesn't work reliably in all cases
 
         doc.end();
 
