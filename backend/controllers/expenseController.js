@@ -58,7 +58,9 @@ exports.addExpense = async (req, res) => {
         res.status(201).json({ id: docRef.id, ...expenseData });
     } catch (error) {
         console.error('Error adding expense:', error);
-        res.status(500).json({ error: error.message });
+        // Extract meaningful error message
+        const errorMessage = error.message || 'Unknown error occurred';
+        res.status(500).json({ error: errorMessage, details: error.toString() });
     }
 };
 

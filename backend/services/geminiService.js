@@ -1,9 +1,8 @@
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Use Gemini 1.5 Flash - more stable and reliable than 2.5-flash
-const MODEL_NAME = "gemini-1.5-flash";
-
+// Use Gemini 1.5 Flash - standard model
+const MODEL_NAME = "gemini-2.5-flash";
 const apiKey = process.env.GOOGLE_API_KEY;
 if (!apiKey) {
     console.error("CRITICAL: GOOGLE_API_KEY is missing in .env file");
